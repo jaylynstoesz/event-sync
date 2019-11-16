@@ -1,15 +1,11 @@
-import java.util
-
 import akka.actor.ActorSystem
-import akka.stream.{ActorAttributes, ActorMaterializer, Materializer, Supervision}
+import akka.stream.{ActorAttributes, Materializer, Supervision}
 import akka.stream.alpakka.csv.scaladsl.{CsvParsing, CsvToMap}
-import akka.util.ByteString
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
-import software.amazon.awssdk.services.dynamodb.model.{AttributeAction, AttributeValue, AttributeValueUpdate, ReturnValue, UpdateItemRequest, UpdateItemResponse}
+import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, ReturnValue, UpdateItemRequest}
 
 import scala.collection.JavaConverters._
 import java.net.URI
-
 import software.amazon.awssdk.regions.Region
 
 object Main {
@@ -38,39 +34,44 @@ object Main {
     implicit val actorSystem: ActorSystem = ActorSystem.create()
     implicit val materializer: Materializer = Materializer.matFromSystem
 
-    val client: DynamoDbClient =
+    implicit val client: DynamoDbClient =
       DynamoDbClient
-          .builder()
-          .endpointOverride(URI.create("http://localhost:4569"))
-          .region(Region.US_EAST_1)
-          .build()
+        .builder()
+        .endpointOverride(URI.create("http://localhost:4569"))
+        .region(Region.US_EAST_1)
+        .build()
 
     FileIO
       .fromPath(Paths.get(filepath))
       .via(CsvParsing.lineScanner())
       .via(CsvToMap.toMapAsStrings())
-      .map(updateRequest)
+      .map(buildUpdateRequest)
       .withAttributes(ActorAttributes.supervisionStrategy {
         case ex: Throwable =>
-          println("Error parsing row event: {}", ex)
+          println(s"Error parsing row event: $ex")
           Supervision.Resume
       })
-      .map(client.updateItem)
+      .map(save)
       .withAttributes(ActorAttributes.supervisionStrategy {
         case ex: Throwable =>
-          println("Error saving row event: {}", ex)
+          println(s"Error saving row event: ${ex.getMessage}")
           Supervision.Resume
       })
-      .runWith(Sink.ignore)
+      .to(Sink.ignore)
+      .run()
+  }
 
-    println("Done. ")
+  def save(updateItemRequest: UpdateItemRequest)(implicit client: DynamoDbClient): Unit = {
+    val campaignId = updateItemRequest.key().get(CAMPAIGN_ID).s()
+    val timestamp = updateItemRequest.expressionAttributeValues().get(s":$TIMESTAMP").n().toLong
+    println(s"$campaignId | $timestamp")
+    client.updateItem(updateItemRequest)
   }
 
   /** Build request to upsert record in lifetime BudgetMetrics table (LifetimeBudgetMetrics) */
-  def updateRequest(line: Map[String, String]): UpdateItemRequest = {
+  def buildUpdateRequest(line: Map[String, String]): UpdateItemRequest = {
     val contractId = line("contract_id")
     val campaignId = line("campaign_id")
-
 
     val lifetimeKey = Map(
       CAMPAIGN_ID -> AttributeValue.builder().s(campaignId).build(),
@@ -96,9 +97,9 @@ object Main {
 
     val expressionValues =
       Map(
-        s":$TIMESTAMP" -> line("ts"),
+        s":$TIMESTAMP" -> s"${line("ts")}000",
         s":$TTL" -> line("ttl"),
-        s":$FIRST_ACTIVITY" -> line("first_activity"),
+        s":$FIRST_ACTIVITY" -> s"${line("first_activity")}000",
         s":$ON_PLATFORM_MICROS" -> line("micros"),
         s":$ON_PLATFORM_REDEMPTIONS" -> line("redemptions"),
         s":$ON_PLATFORM_UNLOCKS" -> "0",
@@ -117,7 +118,6 @@ object Main {
       s"#$TTL" -> TTL
     ).asJava
 
-    println(campaignId)
     UpdateItemRequest
       .builder()
       .tableName(LIFETIME_BUDGET_METRICS)
