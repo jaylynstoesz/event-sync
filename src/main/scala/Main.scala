@@ -47,13 +47,13 @@ object Main {
       .via(CsvToMap.toMapAsStrings())
       .map(buildUpdateRequest)
       .withAttributes(ActorAttributes.supervisionStrategy {
-        case ex: Throwable =>
+        ex: Throwable =>
           println(s"Error parsing row event: $ex")
           Supervision.Resume
       })
       .map(save)
       .withAttributes(ActorAttributes.supervisionStrategy {
-        case ex: Throwable =>
+        ex: Throwable =>
           println(s"Error saving row event: ${ex.getMessage}")
           Supervision.Resume
       })
@@ -81,19 +81,19 @@ object Main {
     val updateExpressions: String =
       "SET " +
         List(
-          s"$TIMESTAMP = :$TIMESTAMP, ",
-          s"$FIRST_ACTIVITY = :$FIRST_ACTIVITY, ",
-          s"#$TTL = :$TTL, ",
-          s"$ON_PLATFORM_REDEMPTIONS = :$ON_PLATFORM_REDEMPTIONS, ",
-          s"$ON_PLATFORM_MICROS = :$ON_PLATFORM_MICROS, ",
-          s"$ON_PLATFORM_UNLOCKS = :$ON_PLATFORM_UNLOCKS, ",
-          s"$OFF_PLATFORM_REDEMPTIONS = :$OFF_PLATFORM_REDEMPTIONS, ",
-          s"$OFF_PLATFORM_MICROS = :$OFF_PLATFORM_MICROS, ",
-          s"$OFF_PLATFORM_UNLOCKS = :$OFF_PLATFORM_UNLOCKS, ",
-          s"$UNTRACKED_REDEMPTIONS = :$UNTRACKED_REDEMPTIONS, ",
-          s"$UNTRACKED_MICROS = :$UNTRACKED_MICROS, ",
+          s"$TIMESTAMP = :$TIMESTAMP",
+          s"$FIRST_ACTIVITY = :$FIRST_ACTIVITY",
+          s"#$TTL = :$TTL",
+          s"$ON_PLATFORM_REDEMPTIONS = :$ON_PLATFORM_REDEMPTIONS",
+          s"$ON_PLATFORM_MICROS = :$ON_PLATFORM_MICROS",
+          s"$ON_PLATFORM_UNLOCKS = :$ON_PLATFORM_UNLOCKS",
+          s"$OFF_PLATFORM_REDEMPTIONS = :$OFF_PLATFORM_REDEMPTIONS",
+          s"$OFF_PLATFORM_MICROS = :$OFF_PLATFORM_MICROS",
+          s"$OFF_PLATFORM_UNLOCKS = :$OFF_PLATFORM_UNLOCKS",
+          s"$UNTRACKED_REDEMPTIONS = :$UNTRACKED_REDEMPTIONS",
+          s"$UNTRACKED_MICROS = :$UNTRACKED_MICROS",
           s"$UNTRACKED_UNLOCKS = :$UNTRACKED_UNLOCKS"
-        ).mkString("")
+        ).mkString(", ")
 
     val expressionValues =
       Map(
