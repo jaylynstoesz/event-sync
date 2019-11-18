@@ -63,7 +63,7 @@ DynamoDB table.
 
 3. In your terminal, log into AWS and assume the role with write permissions for `realtime-expiration-service-LifetimeBudgetMetrics`
 
-4. Execute the `.jar` file for this project with the path to your CSV as a command line argument:
+4. In the root directory of this project, execute the project with the path to your CSV as a command line argument:
     ```commandline
-    $ java -jar <path/to>data-engineering-event-sync.jar <path/to/data.csv> 
+    $ sbt "run \"<path/to/data>.csv\"" 
     ```

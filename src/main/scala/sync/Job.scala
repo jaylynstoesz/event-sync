@@ -1,36 +1,22 @@
+package sync
+
+import java.net.URI
+import java.nio.file.Paths
+
 import akka.actor.ActorSystem
-import akka.stream.{ActorAttributes, Materializer, Supervision}
 import akka.stream.alpakka.csv.scaladsl.{CsvParsing, CsvToMap}
+import akka.stream.scaladsl.{FileIO, Sink}
+import akka.stream.{ActorAttributes, Materializer, Supervision}
+import software.amazon.awssdk.regions.Region
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient
 import software.amazon.awssdk.services.dynamodb.model.{AttributeValue, ReturnValue, UpdateItemRequest}
 
 import scala.collection.JavaConverters._
-import java.net.URI
-import software.amazon.awssdk.regions.Region
 
-object Main {
-  val CONTRACT_ID = "cid"
-  val CAMPAIGN_ID = "pid"
-  val ON_PLATFORM_REDEMPTIONS = "opr"
-  val ON_PLATFORM_MICROS = "opm"
-  val ON_PLATFORM_UNLOCKS = "opu"
-  val OFF_PLATFORM_REDEMPTIONS = "fpr"
-  val OFF_PLATFORM_MICROS = "fpm"
-  val OFF_PLATFORM_UNLOCKS = "fpu"
-  val UNTRACKED_REDEMPTIONS = "xr"
-  val UNTRACKED_MICROS = "xm"
-  val UNTRACKED_UNLOCKS = "xu"
-  val FIRST_ACTIVITY = "fst"
-  val TIMESTAMP = "ts"
-  val TTL = "ttl"
-  val LIFETIME_BUDGET_METRICS: String = "realtime-expiration-service-LifetimeBudgetMetrics"
+class Job {
+  import Job._
 
-  import akka.stream.scaladsl._
-  import java.nio.file.Paths
-
-  def main(args: Array[String]): Unit = {
-    val filepath = args.headOption.getOrElse(throw new Exception("Missing source filepath"))
-
+  def execute(filepath: String): Unit = {
     implicit val actorSystem: ActorSystem = ActorSystem.create()
     implicit val materializer: Materializer = Materializer.matFromSystem
 
@@ -128,4 +114,22 @@ object Main {
       .returnValues(ReturnValue.NONE)
       .build()
   }
+}
+
+object Job {
+  val CONTRACT_ID = "cid"
+  val CAMPAIGN_ID = "pid"
+  val ON_PLATFORM_REDEMPTIONS = "opr"
+  val ON_PLATFORM_MICROS = "opm"
+  val ON_PLATFORM_UNLOCKS = "opu"
+  val OFF_PLATFORM_REDEMPTIONS = "fpr"
+  val OFF_PLATFORM_MICROS = "fpm"
+  val OFF_PLATFORM_UNLOCKS = "fpu"
+  val UNTRACKED_REDEMPTIONS = "xr"
+  val UNTRACKED_MICROS = "xm"
+  val UNTRACKED_UNLOCKS = "xu"
+  val FIRST_ACTIVITY = "fst"
+  val TIMESTAMP = "ts"
+  val TTL = "ttl"
+  val LIFETIME_BUDGET_METRICS: String = "realtime-expiration-service-LifetimeBudgetMetrics"
 }
